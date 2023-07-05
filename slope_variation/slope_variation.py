@@ -6,8 +6,9 @@ import os
 parser = ArgumentParser()
 parser.add_argument("-r", "--rounds", type=int)
 parser.add_argument("-s", "--samples", type=int)
+parser.add_argument("-n", "--dataset_name", default="slope_test_dataset")
 args = parser.parse_args()
-file_name = "slope_test_dataset"
+file_name = args.dataset_name
 label_name = "y"
 data = pd.read_csv(f"raw_data/{file_name}.csv", index_col=0)
 for i in range(args.rounds):

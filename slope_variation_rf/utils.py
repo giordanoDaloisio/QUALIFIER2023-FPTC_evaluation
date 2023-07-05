@@ -70,7 +70,6 @@ def compute_fptc(path, df_names, label, slope=''):
     min_class = []
     sparsity = []
     for data in df_names:
-        #data = pd.read_csv(os.path.join(path, key))
         adult_x = data.drop(columns=label)
         adult_y = data[label]
         classifier = RandomForestClassifier()
@@ -110,6 +109,3 @@ def get_slope(path, df_names, label):
     fptc = data['FPTC'].mean()
     return slope, intercept, data
 
-def train_fptc(path, df_names, label, slope, name):
-    ris = compute_fptc(path, df_names, label, slope)
-    ris.to_csv(name)
