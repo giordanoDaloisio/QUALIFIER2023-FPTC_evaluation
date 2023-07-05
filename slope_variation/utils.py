@@ -4,23 +4,22 @@ import os
 from os.path import isfile, join
 import re
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 import time
-from math import pow
+from math import pow, log2
 from scipy.stats import linregress
 import numpy as np
 
 # Dataset creation functions
 
-def create_training_sets(inpup_dir, output_dir, filename, start, step, dataset=None):
+def create_training_sets(filename, start, step, dataset=None):
     if dataset is None:
-        dataset = pd.read_csv(inpup_dir + filename, index_col=0)
+        dataset = pd.read_csv(filename, index_col=0)
     number_rows = dataset.shape[0]
     sets = []
-    #os.makedirs(output_dir, exist_ok=True)
     for i in range(start, number_rows + 1, step):
         df = dataset.sample(n=i)
         sets.append(df)
-        #df.to_csv(output_dir + filename[0:len(filename) - 4] + '_' + str(i) + '.csv', index=False)
     return sets
 
 def open_training_sets(directory):
@@ -56,60 +55,60 @@ def get_sparsity(dataset):
 
 # FPTC functions
 
-def compute_fptc(path, df_names, label, slope=''):
-    fs_classifier = []
-    training_times = []
-    iterations = []
-    classes = []
-    features = []
-    attributes = []
-    class_imbalance = []
-    continuous_cols = []
-    bin_cols = []
-    maj_class = []
-    min_class = []
-    sparsity = []
-    for data in df_names:
-        #data = pd.read_csv(os.path.join(path, key))
-        adult_x = data.drop(columns=label)
-        adult_y = data[label]
-        classifier = LogisticRegression(penalty='l2', solver='sag', max_iter=2000)
-        start = time.time()
-        classifier.fit(adult_x, adult_y)
-        stop = time.time()
-        training_time = round(stop - start, 2)
-        training_times.append(training_time)
-        iterations.append(classifier.n_iter_[0])
-        n = adult_x.shape[0]
-        v = adult_x.shape[1]
-        m = len(np.unique(adult_y))
-        classes.append(m)
-        features.append(v)
-        attributes.append(n)
-        if slope == '':
-          f_classifier = classifier.n_iter_[0] * n * v * pow(m, 2)
-        else:
-          f_classifier = classifier.n_iter_[0] * n * v * pow(m, 2) * slope
-        fs_classifier.append(round(f_classifier, 2))
-
-        # Other values
-        binary_cols, cont_cols = get_binary_continous_cols(adult_x)
-        continuous_cols.append(cont_cols)
-        bin_cols.append(binary_cols)
-        class_imbalance.append(get_imbalance(adult_y))
-        class_values = adult_y.value_counts(normalize=True).sort_values(ascending=True)
-        maj_class.append(class_values.iloc[-1])
-        min_class.append(class_values.iloc[0])
-        sparsity.append(get_sparsity(adult_x))
-    return pd.DataFrame({'Training time': training_times, 'FPTC': fs_classifier, 'Iterations': iterations, 'Classes': classes, 'Slope': slope, 'Features': features, 'Instances Size': attributes, 'Imbalance': class_imbalance, 'Continous Columns': continuous_cols, 'Binary Columns': bin_cols, 'Majority Classes': maj_class, 'Minority Classes': min_class, 'Sparsity': sparsity})
-
-def get_slope(path, df_names, label):
-    data = compute_fptc(path, df_names, label)
+def get_slope(df_names, label, model='logreg'):
+    data = _compute_fptc(df_names, label, model)
     slope, intercept, r_value, p_value, std_err = linregress(data['FPTC'], data['Training time'])
     training_time = data['Training time'].mean()
     fptc = data['FPTC'].mean()
     return slope, intercept, training_time, fptc, data['Training time'], data['FPTC']
 
-def train_fptc(path, df_names, label, slope, name):
-    ris = compute_fptc(path, df_names, label, slope)
-    ris.to_csv(name)
+def _compute_fptc(df_names, label, slope='', model='logreg'):
+    fs_classifier = []
+    training_times = []
+
+    for data in df_names:
+        adult_x = data.drop(columns=label)
+        adult_y = data[label]
+        if model == 'logreg':
+            classifier = LogisticRegression(penalty='l2', solver='sag', max_iter=10000)
+        else:
+            classifier = RandomForestClassifier(n_estimators=100, max_depth=2, random_state=0)
+        start = time.time()
+        classifier.fit(adult_x, adult_y)
+        stop = time.time()
+        training_time = round(stop - start, 2)
+        training_times.append(training_time)
+        n = adult_x.shape[0]
+        v = adult_x.shape[1]
+        m = len(np.unique(adult_y))
+        if model == 'logreg':
+            f_classifier = _train_fptc_logreg(n, v, m, slope, classifier.n_iter_[0])
+        else:
+            f_classifier = _train_fptc_rf(n, v, m, slope, classifier.n_estimators)
+        fs_classifier.append(round(f_classifier, 2))
+    return pd.DataFrame({'Training time': training_times, 'FPTC': fs_classifier})
+
+def _train_fptc_logreg(rows, cols, classes, slope, iters, intercept=''):
+    n = rows
+    v = cols
+    m = classes
+    if slope == '' and intercept == '':
+        f_classifier = iters * n * v * pow(m, 2)
+    elif intercept == '':
+        f_classifier = (iters * n * v * pow(m, 2) * slope)
+    else:
+        f_classifier = (iters * n * v * pow(m, 2) * slope) + intercept 
+    return f_classifier
+
+def _train_fptc_rf(rows, cols, classes, slope, trees, intercept=None):
+    n = rows
+    v = cols
+    m = classes
+    if slope == '' and intercept == None:
+        f_classifier = trees * (m + 1) * n * v * log2(n)
+    elif intercept == None:
+        f_classifier = (trees * (m + 1) * n * v * log2(n)) * slope
+    else:
+        f_classifier = ((trees * (m + 1) * n * v * log2(n)) * slope) + intercept
+    return f_classifier
+
