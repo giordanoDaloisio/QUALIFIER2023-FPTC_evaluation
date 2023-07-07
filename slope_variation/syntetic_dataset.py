@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 import os
 
 parser = ArgumentParser()
-parser.add_argument("-r", "--rows", type=int, default=1000)
+parser.add_argument("-r", "--rows", type=int, default=10000)
 parser.add_argument("-c", "--cols", type=int, default=6167)
 parser.add_argument("-n", "--name", default="slope_test_dataset")
 args = parser.parse_args()

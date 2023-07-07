@@ -62,7 +62,7 @@ def get_slope(df_names, label, model='logreg'):
     fptc = data['FPTC'].mean()
     return slope, intercept, training_time, fptc, data['Training time'], data['FPTC']
 
-def _compute_fptc(df_names, label, slope='', model='logreg'):
+def _compute_fptc(df_names, label, model='logreg'):
     fs_classifier = []
     training_times = []
 
@@ -82,33 +82,23 @@ def _compute_fptc(df_names, label, slope='', model='logreg'):
         v = adult_x.shape[1]
         m = len(np.unique(adult_y))
         if model == 'logreg':
-            f_classifier = _train_fptc_logreg(n, v, m, slope, classifier.n_iter_[0])
+            f_classifier = _train_fptc_logreg(n, v, m, classifier.n_iter_[0])
         else:
-            f_classifier = _train_fptc_rf(n, v, m, slope, classifier.n_estimators)
+            f_classifier = _train_fptc_rf(n, v, m, classifier.n_estimators)
         fs_classifier.append(round(f_classifier, 2))
     return pd.DataFrame({'Training time': training_times, 'FPTC': fs_classifier})
 
-def _train_fptc_logreg(rows, cols, classes, slope, iters, intercept=''):
+def _train_fptc_logreg(rows, cols, classes, iters, intercept=''):
     n = rows
     v = cols
     m = classes
-    if slope == '' and intercept == '':
-        f_classifier = iters * n * v * pow(m, 2)
-    elif intercept == '':
-        f_classifier = (iters * n * v * pow(m, 2) * slope)
-    else:
-        f_classifier = (iters * n * v * pow(m, 2) * slope) + intercept 
+    f_classifier = iters * n * v * pow(m, 2)
     return f_classifier
 
-def _train_fptc_rf(rows, cols, classes, slope, trees, intercept=None):
+def _train_fptc_rf(rows, cols, classes, trees, intercept=None):
     n = rows
     v = cols
     m = classes
-    if slope == '' and intercept == None:
-        f_classifier = trees * (m + 1) * n * v * log2(n)
-    elif intercept == None:
-        f_classifier = (trees * (m + 1) * n * v * log2(n)) * slope
-    else:
-        f_classifier = ((trees * (m + 1) * n * v * log2(n)) * slope) + intercept
+    f_classifier = trees * (m + 1) * n * v * log2(n)
     return f_classifier
 

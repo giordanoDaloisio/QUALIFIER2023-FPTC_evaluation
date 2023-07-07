@@ -6,8 +6,8 @@ import os
 if __name__ == "__main__":
 
     parser = ArgumentParser()
-    parser.add_argument("-r", "--rounds", type=int)
-    parser.add_argument("-s", "--samples", type=int)
+    parser.add_argument("-r", "--rounds", type=int, default=20)
+    parser.add_argument("-f", "--features", type=int, default=500)
     parser.add_argument("-n", "--dataset_name", default="slope_test_dataset")
     parser.add_argument("-m", "--model", default="logreg", choices=["logreg", "rf"])
 
@@ -17,19 +17,19 @@ if __name__ == "__main__":
     label_name = "y"
     data = pd.read_csv(f"raw_data/{file_name}.csv", index_col=0)
     for i in range(args.rounds):
-        number_of_cols = args.samples
+        number_of_cols = args.features
         slope_data = data.drop(columns=label_name).iloc[:, :number_of_cols]
         slope_data[label_name] = data[label_name]
-        slopes = pd.DataFrame(columns=["Columns", "Slope", "Intercept", "Training Time Mean", "Raw FPTC Mean", "Training Time Full", "FPTC Full"])
+        slopes = pd.DataFrame(columns=["Columns", "Slope", "Intercept"])
         while slope_data.shape[1] < data.shape[1]:
             sets = create_training_sets(file_name, 100, 1000, slope_data)
-            slope, intercept, tt_mean, fptc_mean, tts, fptcs = get_slope(sets, label_name)
-            slopes = pd.concat([slopes, pd.DataFrame({"Columns": len(slope_data.columns), "Slope": slope, "Intercept": intercept, "Training Time Mean": tt_mean, "Raw FPTC Mean": fptc_mean, "Training Time Full": tts, "FPTC Full": fptcs }, index=[0])], ignore_index=True)
+            slope, intercept, tt_mean, fptc_mean, tts, fptcs = get_slope(sets, label_name, model)
+            slopes = pd.concat([slopes, pd.DataFrame({"Columns": len(slope_data.columns), "Slope": slope, "Intercept": intercept}, index=[0])], ignore_index=True)
             os.makedirs(f'slopes_{model}', exist_ok=True)
             slopes.to_csv(f"slopes_{model}/slopes_{file_name}_{i}.csv")
 
             # Add new columns to data
-            number_of_cols = slope_data.shape[1] + args.samples
+            number_of_cols = slope_data.shape[1] + args.features
             slope_data = data.drop(columns=label_name).iloc[:, :number_of_cols]
             slope_data[label_name] = data[label_name]
         print(f"Round {i} completed")
