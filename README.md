@@ -13,7 +13,7 @@ This repository contains the replication package of the experiments described in
 
 The repository is structured as follows:
 
-- `slope_variation`: contains the codes to replicate the experiment conducted to answer RQ1.
-- `training_time`: contains the codes to replicate the experiment conducted to answer RQ2.
+- [`slope_variation`](./slope_variation/README.md): contains the codes to replicate the experiment conducted to answer RQ1.
+- [`training_time`](./training_time/README.md): contains the codes to replicate the experiment conducted to answer RQ2.
 
 Refer to the `README.md` file in each folder for more details on how to replicate the answers to the research questions.
